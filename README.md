@@ -1,4 +1,5 @@
-[![Shopify Quick View demo](docs/shopify-quick-view-thumbnail.jpg)](https://github.com/user-attachments/assets/c9a241b3-7290-410c-aeac-599896c355f1)
+
+https://github.com/user-attachments/assets/9bcf179e-1554-4b1f-98f6-5952d2e3f054
 
 # Shopify Custom Sections
 
