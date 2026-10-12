@@ -1,28 +1,82 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
 {
   "sections": {
     "banner": {
-      "type": "the-banner",
+      "type": "the-Banner",
       "settings": {
-        "heading": "Tisso vison in the wild",
-        "subheading": "Discover our new collection",
-        "btn1_text": "Shop Collection",
-        "btn2_text": "Our Story",
-        "bg_color": "#F5F5F5"
+        "small_text": "Find the ideal gift for your loved ones.",
+        "gift_link": "",
+        "gift_btn": "choose gift",
+        "main_heading": "The Gift Guide",
+        "main_text_desktop": "Discover Joy: Your Ultimate Holiday Gift Destination. Explore our curated selection and find the perfect gifts to delight your loved ones this holiday season.",
+        "main_text_mobile": "Discover Joy: Your Ultimate Holiday Gift Destination.",
+        "main_link": "",
+        "main_btn": "shop Now",
+        "footer_text_desktop": "SUSTAINABLE, ETHICALLY MADE CLOTHES IN SIZES XXS TO 6XL",
+        "footer_text_mobile": "SUSTAINABLE, ETHICALLY MADE ACTIVEWEAR"
       }
     },
     "grid": {
       "type": "product-grid",
       "blocks": {
-        "product_1": { "type": "product", "settings": {} },
-        "product_2": { "type": "product", "settings": {} },
-        "product_3": { "type": "product", "settings": {} },
-        "product_4": { "type": "product", "settings": {} },
-        "product_5": { "type": "product", "settings": {} },
-        "product_6": { "type": "product", "settings": {} }
+        "product_1": {
+          "type": "product",
+          "settings": {
+            "product": "black-leather-bag"
+          }
+        },
+        "product_2": {
+          "type": "product",
+          "settings": {
+            "product": ""
+          }
+        },
+        "product_3": {
+          "type": "product",
+          "settings": {
+            "product": ""
+          }
+        },
+        "product_4": {
+          "type": "product",
+          "settings": {
+            "product": ""
+          }
+        },
+        "product_5": {
+          "type": "product",
+          "settings": {
+            "product": ""
+          }
+        },
+        "product_6": {
+          "type": "product",
+          "settings": {
+            "product": ""
+          }
+        }
       },
-      "block_order": ["product_1", "product_2", "product_3", "product_4", "product_5", "product_6"],
+      "block_order": [
+        "product_1",
+        "product_2",
+        "product_3",
+        "product_4",
+        "product_5",
+        "product_6"
+      ],
       "settings": {}
     }
   },
-  "order": ["banner", "grid"]
+  "order": [
+    "banner",
+    "grid"
+  ]
 }

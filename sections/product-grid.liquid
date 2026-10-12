@@ -10,7 +10,7 @@
     <div class="product-card" data-product-id="{{ product.id }}" {{ block.shopify_attributes }}>
       {% if product!= blank %}
         <div class="product-image">
-          <img src="{{ product.featured_image | image_url: width: 600 }}" alt="{{ product.title }}" loading="lazy">
+          <img src="{{ product.featured_image | image_url: width: 600 }}" alt="{{ product.title }}" loading="lazy" width="{{ product.featured_image.width }}" height="{{ product.featured_image.height }}">
           <button class="circle-btn" aria-label="Open quick view">+</button>
         </div>
       {% else %}
@@ -66,7 +66,7 @@
       <div class="popup-body">
         {% comment %} Top section: product image left + title/price/desc right {% endcomment %}
         <div class="popup-info">
-          <img id="PopupImage-{{ section.id }}" src="" alt="">
+          <img id="PopupImage-{{ section.id }}" src="" alt="" width="300" height="300">
           <div class="popup-text">
             <h2 id="PopupTitle-{{ section.id }}"></h2>
             <p id="PopupPrice-{{ section.id }}"></p>
@@ -79,11 +79,11 @@
         {% comment %} Add to cart form - sends variant id + quantity to /cart/add.js {% endcomment %}
       <form id="PopupForm-{{ section.id }}" class="popup-form">
         <input type="hidden" id="PopupVariantId-{{ section.id }}" name="id" value="">
-        <div style="display:flex; gap:10px;">
-          <input type="number" name="quantity" value="1" min="1" style="width:70px; border:1px solid #000; padding:10px;outline:none">
-          <button type="submit" style="flex:1; background:#000; color:#fff; border:none; padding:12px; cursor:pointer; font-weight:bold;">Add to Cart</button>
+        <div class="popup-form-inputs">
+          <input type="number" name="quantity" value="1" min="1">
+          <button type="submit">Add to Cart</button>
         </div>
-        <p id="PopupMessage-{{ section.id }}" style="margin-top:10px; font-size:14px; display:none;"></p>
+        <p id="PopupMessage-{{ section.id }}" class="message-form"></p>
       </form>
     </div>
   </div>
@@ -113,6 +113,7 @@
 /* Popup card */
 #product-grid-{{ section.id }} .popup-content {background: #fff; position: relative; padding: 20px;max-width: 350px;max-height: 447px;}
 #product-grid-{{ section.id }} .popup-close {position: absolute; top: 10px; right: 10px;background: none; border: none; font-size: 30px; cursor: pointer;}
+#product-grid-{{ section.id }} .popup-content.locked .popup-close { opacity: .3; cursor: not-allowed; }
 #product-grid-{{ section.id }} .popup-body { display: flex; flex-direction: column; margin-bottom: 20px;}
 #product-grid-{{ section.id }} .popup-body .popup-info {display: flex;gap: 5px;margin-top: 25px;align-items: center; }
 #product-grid-{{ section.id }} .popup-body .popup-info img { width: 120px;height: 140px;object-fit: cover; }
@@ -156,16 +157,30 @@
 #PopupVariants-{{ section.id }} .select-option:hover {background: #f5f5f5;}
 /* Selected state - inverted colors */
 #PopupVariants-{{ section.id }} .select-option.selected {background: #000;color: #fff;}
+
+/* Form inputs wrapper */
+#PopupForm-{{ section.id }} .popup-form-inputs {display: flex;gap: 10px;}
+/* Number input */
+#PopupForm-{{ section.id }} input[type="number"] {width: 70px;border: 1px solid #000;padding: 10px;outline: none;}
+/* Add to cart button */
+#PopupForm-{{ section.id }} button[type="submit"] {cursor:pointer;flex:1; background:#000; color:#fff; border:none; padding:12px; font-weight:bold;}
+#PopupForm-{{ section.id }} button[type="submit"]:disabled { cursor: not-allowed; opacity: 0.5;}
+/* Message form */
+#PopupMessage-{{ section.id }}.message-form {margin-top:10px; font-size:14px; display:none;}
 </style>
 
 
 <script>
   (function() {
   /**
-    * Product Grid Quick View - IIFE
-    * Scope isolation to prevent conflicts when section is duplicated.
-    * Handles variant selection with O(1) lookup via HashMap and async cart with promotion logic.
-  **/
+ * Product Grid Quick View
+ * - Wrapped in an IIFE and scoped by section.id, so the section can be
+ *   added to a page multiple times without ID or state collisions.
+ * - Variant lookup uses a Map built once per product open (O(1) per selection).
+ * - Add to cart uses Shopify's AJAX Cart API (/cart/add.js) and refreshes the
+ *   header cart icon through the Section Rendering API (no page reload).
+ * - Promotion: Black + Medium variants auto-add the "Dark Winter Jacket".
+ */
   const sectionRoot = document.getElementById('product-grid-{{ section.id }}');
   if (!sectionRoot) return;
 
@@ -181,12 +196,12 @@
   const popupMessage = document.getElementById('PopupMessage-{{ section.id }}');
   const closeBtn = sectionRoot.querySelector('.popup-close');
 
-  // State
-  let selectedOptions = []; // e.g., ['Black', 'Medium']
-  let softJacket = null; // Cross-sell product data
-  let matchedVariant = null; // Current matched variant object
-  let currentProductData = null;
-  
+  // ---- State ----
+let selectedOptions = [];    // Option values in product order, e.g. ['Black', 'Medium']
+let softJacket = null;       // Cross-sell product, parsed from #SoftJacketJson
+let matchedVariant = null;   // Variant matching the current selection (null until complete)
+let currentProductData = null; // Data of the product shown in the popup
+let lockClose = false;       // True while an add-to-cart request is in flight
   /**
     * Converts any CSS color name to HEX for reliable rendering
     * Handles edge cases like "Light Blue" -> "#add8e6"
@@ -213,16 +228,12 @@
   return ctx.fillStyle;
 }
 
-  // Pre-parse cross-sell product and build its lookup map for auto-add
+  // Parse the cross-sell product once. A parse failure must not break the quick view,
+// so it only logs a warning and the promotion is skipped.
   try {
     const softJacketEl = document.getElementById('SoftJacketJson');
     if (softJacketEl) {
       softJacket = JSON.parse(softJacketEl.textContent);
-      softJacket.variantMap = new Map();
-      softJacket.variants.forEach(v => {
-        const k = [v.option1, v.option2, v.option3].filter(Boolean).join('|').toLowerCase();
-        softJacket.variantMap.set(k, v);
-      });
     }
   }  catch(e) { console.warn('SoftJacket parse failed', e); }
 
@@ -347,7 +358,6 @@
         variantInput.value = '';
         matchedVariant = null;
         addBtn.disabled = true;
-        addBtn.style.opacity = '0.5';
         addBtn.textContent = 'Select options';
         return;
     }
@@ -359,23 +369,33 @@
       variantInput.value = matched.id;
       matchedVariant = matched;
       addBtn.disabled =!matched.available;
-      addBtn.style.opacity = matched.available? '1' : '0.5';
-      addBtn.style.cursor = matched.available? 'pointer' : 'not-allowed';
       addBtn.textContent = matched.available? 'Add to Cart' : 'Out of stock';
-    }
+    } else {
+  variantInput.value = '';
+  matchedVariant = null;
+  addBtn.disabled = true;
+  addBtn.textContent = 'Unavailable';
+}
   }
     updateMatchedVariant();
+    popupMessage.style.display = 'none';
     overlay.classList.add('show');
     document.body.style.overflow = 'hidden';
   });
 });
 
 
-       // Show popup and lock body scroll
-  // Close popup handler - restores body scroll
+  /**
+  * Closes the popup and restores page scroll.
+  * Ignored while lockClose is true, so the user cannot dismiss the popup (× button,
+  * overlay click, Escape) in the middle of an add-to-cart request. This keeps the
+  * success/error message and the button state tied to the product that was added.
+  */
   function closePopup() {
+    if (lockClose) return;
     overlay.classList.remove('show');
     document.body.style.overflow = 'auto';
+    popupMessage.style.display = 'none';
   }
   closeBtn.addEventListener('click', closePopup);
   // Close when clicking outside popup content
@@ -384,109 +404,97 @@
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && overlay.classList.contains('show')) closePopup(); });
 
   /**
-   * Add to Cart Handler - Async/Await version
-   * Flow:
-   * 1. Add main variant via /cart/add.js
-   * 2. Conditional promotion: If variant is Black + Medium, auto-add Dark Winter Jacket
-   * 3. Refresh cart count + cart page content without full reload
-   * 4. UX: Loading state, success/error feedback
-   **/
-    if(popupForm) {
-    popupForm.addEventListener('submit', async function(e){
-      e.preventDefault();
-      const submitBtn = this.querySelector('[type="submit"]');
-      const originalText = submitBtn.textContent;
+  * Add to Cart handler
+  * 1. Lock the popup and disable the button (prevents double submit and early close).
+  * 2. Add the selected variant via /cart/add.js.
+  * 3. Promotion: if the variant is Black + Medium, also add the Dark Winter Jacket.
+  * 4. Refresh the header cart icon via the Section Rendering API (no reload).
+  * 5. Show feedback, then auto-close after 1s and release the lock.
+  * On failure the lock is released immediately so the user can retry or close.
+ */
+ if (popupForm) {
+  popupForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    // Guard against a second submit (e.g. pressing Enter in the quantity field)
+    if (lockClose) return;
+    const submitBtn = this.querySelector('[type="submit"]');
+    const originalText = submitBtn.textContent;
 
-      try {
-        // UX: Disable button to prevent double submission
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Adding...';
-        popupMessage.style.display = 'none';
+    try {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Adding...';
+      popupMessage.style.display = 'none';
+      lockClose = true;
+      overlay.querySelector('.popup-content').classList.add('locked');
+      const title = (matchedVariant?.title || '').toLowerCase();
+      const hasBlack = title.includes('black');
+      const hasMedium = title.includes('medium') || title.split('/').some(s => s.trim() === 'm');
 
-        const formData = new FormData(this);
-        const title = (matchedVariant?.title || '').toLowerCase();
-        const hasBlack = title.includes('black');
-        const hasMedium = title.includes('medium') || title.split('/').some(s => s.trim().toLowerCase() === 'm');
+      // 1) Add main product
+      const res = await fetch('/cart/add.js', { method: 'POST', body: new FormData(this) });
+      if (!res.ok) throw new Error((await res.json()).description || 'Failed to add');
 
-        // 1- Add main product
-        const res = await fetch('/cart/add.js', { method: 'POST', body: formData });
-        if(!res.ok){
-          const errJson = await res.json();
-          throw new Error(errJson.description || 'Failed to add');
+      // 2) Promotion: auto-add jacket for Black + Medium
+      let jacketAdded = false;
+      if (hasBlack && hasMedium && softJacket) {
+        // Fallback: if no Black/Medium variant exists on the jacket, use its first variant
+        const jVar = softJacket.variants.find(v => {
+          const t = (v.title || '').toLowerCase();
+          return t.includes('black') && (t.includes('medium') || t.split('/').some(s => s.trim() === 'm'));
+        }) || softJacket.variants[0];
+
+        if (jVar) {
+          const jRes = await fetch('/cart/add.js', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: jVar.id, quantity: 1 })
+          });
+          // Only report the jacket as added if its request actually succeeded
+          // (e.g. it may be out of stock even though the main product was added)
+          jacketAdded = jRes.ok;
         }
-        await res.json();
-
-         // Step 2: Promotion logic - Auto add jacket for Black/Medium combo
-        if(hasBlack && hasMedium && softJacket){
-          let jVar = softJacket.variants.find(v => {
-            const t = (v.title || '').toLowerCase();
-            return t.includes('black') && (t.includes('medium') || t.split('/').some(s => s.trim() === 'm'));
-          }) || softJacket.variants[0];
-
-          if(jVar){
-            await fetch('/cart/add.js', {
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({id: jVar.id, quantity: 1})
-            });
-          }
-        }
-
-         // Step 3: Update cart icon count
-        const cartRes = await fetch('/cart.js');
-        const cart = await cartRes.json();
-
-        document.querySelectorAll('.cart-count-bubble').forEach(b => {
-          const numSpan = b.querySelector('span:not(.visually-hidden)');
-          if(numSpan) numSpan.textContent = cart.item_count;
-          else b.textContent = cart.item_count;
-          b.style.display = cart.item_count > 0? 'flex' : 'none';
-        });
-
-        // 4. Smart cart page update - handles Dawn's empty cart edge case
-        if (window.location.pathname.includes('/cart')) {
-        /**
-         * EDGE CASE: Dawn theme renders a completely different DOM when cart is empty
-         * (.cart--empty / .cart__empty) and does NOT include #main-cart-items or #main-cart-footer.
-         * Surgical innerHTML replacement would fail silently, leaving the user on an empty page.
-         * 
-         * Fix: Detect empty state and force a full reload to rebuild the entire cart layout.
-         * For non-empty carts, we can safely hot-swap the items and footer via AJAX for a smoother UX.
-         **/
-          const isEmptyCartPage = document.querySelector('.cart--empty, .cart__empty, .is-empty') 
-          || !document.getElementById('main-cart-items');
-            if(isEmptyCartPage){
-              // Empty cart structure is different - full reload required to re-initialize cart sections
-              window.location.reload();
-            } else {
-              // Cart already has items - hot-swap content to avoid full page reload
-              const pageRes = await fetch(window.location.href);
-              const html = await pageRes.text();
-              const doc = new DOMParser().parseFromString(html, 'text/html');
-              const newItems = doc.getElementById('main-cart-items');
-              const oldItems = document.getElementById('main-cart-items');
-              if(newItems && oldItems) oldItems.innerHTML = newItems.innerHTML;
-              const newFooter = doc.getElementById('main-cart-footer');
-              const oldFooter = document.getElementById('main-cart-footer');
-              if(newFooter && oldFooter) oldFooter.innerHTML = newFooter.innerHTML;
-            }
-        }
-        popupMessage.textContent = hasBlack && hasMedium? '✓ Added + Dark Winter Jacket auto-added!' : '✓ Added to cart!';
-        popupMessage.style.display = 'block';
-        popupMessage.style.color = 'green';
-        setTimeout(() => { popupMessage.style.display = 'none'; closePopup(); }, 1200);
-
-      } catch(err) {
-        console.error(err);
-        popupMessage.textContent = err.message || 'Error adding to cart';
-        popupMessage.style.display = 'block';
-        popupMessage.style.color = 'red';
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
       }
-    });
-  }
+
+      // 3) Refresh the cart icon. Kept in its own try/catch: a failed icon refresh
+// must not show an error after the product was added successfully.
+      try {
+        const secs = await (await fetch(`${location.pathname}?sections=cart-icon-bubble`, { cache: 'no-store' })).json();
+        const temp = document.createElement('div');
+        temp.innerHTML = secs['cart-icon-bubble'] || '';
+        const newBubble = temp.querySelector('#cart-icon-bubble') || temp.querySelector('.shopify-section');
+        const oldBubble = document.getElementById('cart-icon-bubble');
+        if (newBubble && oldBubble) oldBubble.innerHTML = newBubble.innerHTML;
+      } catch (e) {
+        console.warn('Cart icon refresh failed', e);
+      }
+
+      popupMessage.textContent = jacketAdded ? '✓ Added + Dark Winter Jacket auto-added!' : '✓ Added to cart!';
+      popupMessage.style.display = 'block';
+      popupMessage.style.color = 'green';
+      submitBtn.textContent = '✓ Added';
+
+      setTimeout(
+        () => {
+          // Release the lock and close the popup
+          lockClose = false;
+          overlay.querySelector('.popup-content').classList.remove('locked');
+          closePopup();
+        }
+        , 1000);
+
+    } catch (err) {
+      console.error(err);
+      // Always release the lock on failure so the user is never stuck in the popup
+      lockClose = false;
+      popupMessage.textContent = err.message || 'Error adding to cart';
+      popupMessage.style.display = 'block';
+      popupMessage.style.color = 'red';
+      submitBtn.disabled = false;
+      overlay.querySelector('.popup-content').classList.remove('locked');
+      submitBtn.textContent = originalText;
+    }
+  });
+}
 })();
 </script>
 
