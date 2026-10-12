@@ -10,7 +10,7 @@
 {
   "sections": {
     "banner": {
-      "type": "the-banner",
+      "type": "the-Banner",
       "settings": {
         "small_text": "Find the ideal gift for your loved ones.",
         "gift_link": "",
