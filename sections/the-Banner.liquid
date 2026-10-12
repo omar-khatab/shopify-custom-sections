@@ -16,7 +16,7 @@
             {% comment %}  Mobile Menu Content - Shows when burger clicked {% endcomment %}
             <div class="banner-content">
                 <p>{{ section.settings.small_text }}</p>
-                    <a href="{{ section.settings.gift_link }}">{{ section.settings.gift_btn }}
+                    <a href="{{ section.settings.header_link }}">{{ section.settings.header_btn }}
                     <svg width="26" height="12" viewBox="0 0 26 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path fill="currentColor" d="M0.75 4.77298L7.37629e-08 4.77298L-7.37629e-08 6.27298L0.75 6.27298L0.75 4.77298ZM25.2803 6.05331C25.5732 5.76042 25.5732 5.28554 25.2803 4.99265L20.5074 0.21968C20.2145 -0.073213 19.7396 -0.0732131 19.4467 0.21968C19.1538 0.512574 19.1538 0.987447 19.4467 1.28034L23.6893 5.52298L19.4467 9.76562C19.1538 10.0585 19.1538 10.5334 19.4467 10.8263C19.7396 11.1192 20.2145 11.1192 20.5074 10.8263L25.2803 6.05331ZM0.75 6.27298L24.75 6.27298L24.75 4.77298L0.75 4.77298L0.75 6.27298Z"/>
                     </svg>
@@ -33,7 +33,7 @@
             </div>
             {% comment %}  Header Text & Link - Desktop Only {% endcomment %}
             <p class="header-text">{{ section.settings.small_text }}</p>
-            <a href="{{ section.settings.gift_link }}" class="header-link">{{ section.settings.gift_btn }}
+            <a href="{{ section.settings.header_link }}" class="header-link">{{ section.settings.header_btn }}
                 <svg width="26" height="12" viewBox="0 0 26 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path fill="currentColor" d="M0.75 4.77298L7.37629e-08 4.77298L-7.37629e-08 6.27298L0.75 6.27298L0.75 4.77298ZM25.2803 6.05331C25.5732 5.76042 25.5732 5.28554 25.2803 4.99265L20.5074 0.21968C20.2145 -0.073213 19.7396 -0.0732131 19.4467 0.21968C19.1538 0.512574 19.1538 0.987447 19.4467 1.28034L23.6893 5.52298L19.4467 9.76562C19.1538 10.0585 19.1538 10.5334 19.4467 10.8263C19.7396 11.1192 20.2145 11.1192 20.5074 10.8263L25.2803 6.05331ZM0.75 6.27298L24.75 6.27298L24.75 4.77298L0.75 4.77298L0.75 6.27298Z"/>
                 </svg>
@@ -47,7 +47,7 @@
             <img src="{{ section.settings.pattern_image_1 | image_url: width: 2000 }}" alt="{{ section.settings.pattern_image_1.alt | default: 'banner pattern' }}" class="img-top" width="{{ section.settings.pattern_image_1.width }}" height="{{ section.settings.pattern_image_1.height }}" >
         {% else %}
             {% comment %} Default images from assets folder - replace 'banner-default.png' with your actual file name {% endcomment %}
-            <img src="{{ 'banner-default.png' | asset_url }}" alt="banner pattern top" class="img-top" width="1920" height="800" >
+            <img src="{{ 'banner-default.png' | asset_url }}" alt="banner pattern top" class="img-top" width="1920" height="800" aria-hidden="true">
         {% endif %}
 
         {% comment %} Image 2 - Bottom pattern - independent picker {% endcomment %}
@@ -178,8 +178,8 @@
     "settings": [
         { "type": "image_picker", "id": "logo", "label": "Logo" },
         { "type": "text", "id": "small_text", "label": "Small Text", "default": "Find the ideal gift for your loved ones." },
-        { "type": "url", "id": "gift_link", "label": "Heading Link" },
-        { "type": "text", "id": "gift_btn", "label": "Button Text", "default": "choose gift" },
+        { "type": "url", "id": "header_link", "label": "Header Link" },
+        { "type": "text", "id": "header_btn", "label": "Header Button Text", "default": "choose gift" },
         { "type": "text", "id": "main_heading", "label": "Main Heading", "default": "The Gift Guide" },
         { "type": "textarea", "id": "main_text_desktop", "label": "Main Text Desktop", "default": "Discover Joy: Your Ultimate Holiday Gift Destination. Explore our curated selection and find the perfect gifts to delight your loved ones this holiday season." },
         { "type": "textarea", "id": "main_text_mobile", "label": "Main Text Mobile", "default": "Discover Joy: Your Ultimate Holiday Gift Destination." },
