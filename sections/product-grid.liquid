@@ -1,37 +1,64 @@
 <div class="product-grid-section" id="product-grid-{{ section.id }}">
   <h3 class="wrapper-head">Tisso vison in the wild</h3>
   <div class="grid-wrapper">
-    {% for block in section.blocks %}
-      {% assign product = block.settings.product %}
-      {% if product != blank %}
-        {% comment %} Store product data as JSON for popup - no extra API call needed {% endcomment %}
-        <div class="product-card" 
-          data-product=
-          '{"title": {{ product.title | json }}, 
-            "price_formatted": {{ product.price | money | json }}, 
-            "image": {{ product.featured_image | image_url: width: 600 | json }}, 
-            "description": {{ product.description | strip_html | truncate: 200 | json }}, 
-            "variants": {{ product.variants | json }},
-            "options": {{ product.options | json }},
-            "handle": {{ product.handle | json }} }'
-            {{ block.shopify_attributes }}>
-            <div class="product-image">
-              <img src="{{ product.featured_image | image_url: width: 600 }}" alt="{{ product.title }}" loading="lazy" 
-                width="{{ product.featured_image.width }}" height="{{ product.featured_image.height }}">
-                {% comment %} Small circle button - shows on hover and opens the popup {% endcomment %}
-              <button class="circle-btn">+</button>
-            </div>
+   {% for block in section.blocks %}
+    {% assign product = block.settings.product %}
+    {%- comment -%}
+      Product card block
+      - Uses block.shopify_attributes for theme editor drag & drop support
+    {%- endcomment -%}
+    <div class="product-card" data-product-id="{{ product.id }}" {{ block.shopify_attributes }}>
+      {% if product!= blank %}
+        <div class="product-image">
+          <img src="{{ product.featured_image | image_url: width: 600 }}" alt="{{ product.title }}" loading="lazy" width="{{ product.featured_image.width }}" height="{{ product.featured_image.height }}">
+          <button class="circle-btn" aria-label="Open quick view">+</button>
         </div>
       {% else %}
-      {% comment %} Placeholder when merchant hasn't selected a product yet {% endcomment %}
-        <div class="product-card empty">
-          <div class="product-image" style="background:#f5f5f5;" height="400"></div>
-          <p>choose a product</p>
+        {%- comment -%} Editor placeholder: shown when merchant hasn't selected a product yet {%- endcomment -%}
+        <div class="product-image" style="display:flex; align-items:center; justify-content:center; background:#f5f5f5; border:1px dashed #ccc; aspect-ratio:1;">
+          <p style="font-family:Jost; font-size:14px; opacity:0.5;">Choose product</p>
         </div>
       {% endif %}
-    {% endfor %}
+    </div>
+
+    {% if product!= blank %}
+      {%- comment -%}
+        Store product data as JSON for JS consumption
+      {%- endcomment -%}
+      <script type="application/json" id="ProductJson-{{ product.id }}">
+      {
+        "title": {{ product.title | json }},
+        "price_formatted": {{ product.price | money | json }},
+        "image": {{ product.featured_image | image_url: width: 600 | json }},
+        "description": {{ product.description | strip_html | truncate: 200 | json }},
+        "variants": {{ product.variants | json }},
+        "handle": {{ product.handle | json }},
+        "options": [
+          {% for opt in product.options_with_values %}
+            {
+              "name": {{ opt.name | json }},
+              "position": {{ opt.position }},
+              "values": {{ opt.values | json }}
+            }{% unless forloop.last %},{% endunless %}
+          {% endfor %}
+        ]
+      }
+      </script>
+    {% endif %}
+   {% endfor %}
   </div>
 
+{% assign soft_jacket = all_products['dark-winter-jacket'] %}
+{% if soft_jacket!= blank %}
+  {%- comment -%} Preload cross-sell product for Black + Medium auto-add promotion {%- endcomment -%}
+  <script type="application/json" id="SoftJacketJson">
+  {
+    "id": {{ soft_jacket.id | json }},
+    "title": {{ soft_jacket.title | json }},
+    "variants": {{ soft_jacket.variants | json }}
+  }
+  </script>
+{% endif %}
 {% comment %} Popup , image + info on top {% endcomment %}
   <div class="popup-overlay" id="PopupOverlay-{{ section.id }}">
     <div class="popup-content" role="dialog" aria-modal="true">
@@ -39,7 +66,7 @@
       <div class="popup-body">
         {% comment %} Top section: product image left + title/price/desc right {% endcomment %}
         <div class="popup-info">
-          <img id="PopupImage-{{ section.id }}" src="" alt="">
+          <img id="PopupImage-{{ section.id }}" src="" alt="" width="300" height="300">
           <div class="popup-text">
             <h2 id="PopupTitle-{{ section.id }}"></h2>
             <p id="PopupPrice-{{ section.id }}"></p>
@@ -52,11 +79,11 @@
         {% comment %} Add to cart form - sends variant id + quantity to /cart/add.js {% endcomment %}
       <form id="PopupForm-{{ section.id }}" class="popup-form">
         <input type="hidden" id="PopupVariantId-{{ section.id }}" name="id" value="">
-        <div style="display:flex; gap:10px;">
-          <input type="number" name="quantity" value="1" min="1" style="width:70px; border:1px solid #000; padding:10px;">
-          <button type="submit" style="flex:1; background:#000; color:#fff; border:none; padding:12px; cursor:pointer; font-weight:bold;">Add to Cart</button>
+        <div class="popup-form-inputs">
+          <input type="number" name="quantity" value="1" min="1">
+          <button type="submit">Add to Cart</button>
         </div>
-        <p id="PopupMessage-{{ section.id }}" style="margin-top:10px; font-size:14px; display:none;"></p>
+        <p id="PopupMessage-{{ section.id }}" class="message-form"></p>
       </form>
     </div>
   </div>
@@ -86,6 +113,7 @@
 /* Popup card */
 #product-grid-{{ section.id }} .popup-content {background: #fff; position: relative; padding: 20px;max-width: 350px;max-height: 447px;}
 #product-grid-{{ section.id }} .popup-close {position: absolute; top: 10px; right: 10px;background: none; border: none; font-size: 30px; cursor: pointer;}
+#product-grid-{{ section.id }} .popup-content.locked .popup-close { opacity: .3; cursor: not-allowed; }
 #product-grid-{{ section.id }} .popup-body { display: flex; flex-direction: column; margin-bottom: 20px;}
 #product-grid-{{ section.id }} .popup-body .popup-info {display: flex;gap: 5px;margin-top: 25px;align-items: center; }
 #product-grid-{{ section.id }} .popup-body .popup-info img { width: 120px;height: 140px;object-fit: cover; }
@@ -96,22 +124,67 @@
 
 /* Variants wrapper - reversed to show Color above Size per Figma layout */
 #PopupVariants-{{ section.id }} {display: flex;flex-direction: column-reverse;gap: 5px;}
+
 {% comment %} Variant row for Color option {% endcomment %}
-#PopupVariants-{{ section.id }} .color {display: flex}
-{% comment %} Variant row for Size option {% endcomment %}
-#PopupVariants-{{ section.id }} .size {display: flex;gap: 5px;}
-{% comment %} for buttons of variant {% endcomment %}
-#PopupVariants-{{ section.id }} div button {padding:6px 12px; border:1px solid #000; background:#fff; cursor:pointer;}
+#PopupVariants-{{ section.id }} .color {display: flex;position: relative;}
+#PopupVariants-{{ section.id }} .color .active-element{position: absolute;width:50%;height:100%;background:#000;transition:0.5s;z-index:1;opacity: 0;}
+#PopupVariants-{{ section.id }} .color button {position:relative;flex:1; border:1px solid #222;padding: 10px;text-align: left;background:transparent;color:#000;z-index:2;transition:0.3s;cursor:pointer;}
+#PopupVariants-{{ section.id }} .color button.active {color:#fff}
+
+/* ============================================
+  Custom Select - Size Variant (Figma spec)
+  Replaces native <select> for consistent styling
+  ============================================ */
+
+/* Container - relative for absolute dropdown positioning */
+#PopupVariants-{{ section.id }} .custom-select {position: relative;width: 100%;}
+/* Trigger - visible button that shows current selection */
+#PopupVariants-{{ section.id }} .select-trigger {display: flex;justify-content: space-between;align-items: center;padding-left: 10px;background: #fff;border: 1.5px solid #222;cursor: pointer;font-size: 14px;font-weight: 500;transition: all 0.2s;}
+#PopupVariants-{{ section.id }} .custom-select:hover .select-trigger {border-color: #000;}
+/* Focus state when dropdown is open */
+#PopupVariants-{{ section.id }}.custom-select.open .select-trigger {border-color: #000;box-shadow: 0 0 0 3px rgba(0,0,0,0.08);}
+/* Arrow icon container - separated with left border per design */
+#PopupVariants-{{ section.id }} .select-trigger .icon-arrow {width:60px;height:40px;display: flex;justify-content: center;align-items: center;border-left: 1px solid #222;}
+#PopupVariants-{{ section.id }} .select-trigger svg {transition: 0.5s;}
+/* Rotate arrow when open */
+#PopupVariants-{{ section.id }} .custom-select.open .select-trigger svg {transform: rotate(180deg);}
+/* Dropdown list - hidden by default with opacity transition */
+#PopupVariants-{{ section.id }} .select-options {position: absolute;left: 0;right: 0;background: #fff;border: 1px solid #222;box-shadow: 0 10px 30px rgba(0,0,0,0.1);z-index: 10;overflow: hidden;opacity: 0;pointer-events: none;transition: all 0.25s ease;}
+/* Visible state */
+#PopupVariants-{{ section.id }} .custom-select.open .select-options {opacity: 1;pointer-events: auto;}
+/* Individual option item */
+#PopupVariants-{{ section.id }} .select-option {padding: 5px;cursor: pointer;font-size: 14px;transition: all 0.15s;text-align: center;}
+#PopupVariants-{{ section.id }} .select-option:hover {background: #f5f5f5;}
+/* Selected state - inverted colors */
+#PopupVariants-{{ section.id }} .select-option.selected {background: #000;color: #fff;}
+
+/* Form inputs wrapper */
+#PopupForm-{{ section.id }} .popup-form-inputs {display: flex;gap: 10px;}
+/* Number input */
+#PopupForm-{{ section.id }} input[type="number"] {width: 70px;border: 1px solid #000;padding: 10px;outline: none;}
+/* Add to cart button */
+#PopupForm-{{ section.id }} button[type="submit"] {cursor:pointer;flex:1; background:#000; color:#fff; border:none; padding:12px; font-weight:bold;}
+#PopupForm-{{ section.id }} button[type="submit"]:disabled { cursor: not-allowed; opacity: 0.5;}
+/* Message form */
+#PopupMessage-{{ section.id }}.message-form {margin-top:10px; font-size:14px; display:none;}
 </style>
 
 
 <script>
   (function() {
-    // IIFE to avoid polluting global scope when multiple sections exist
+  /**
+ * Product Grid Quick View
+ * - Wrapped in an IIFE and scoped by section.id, so the section can be
+ *   added to a page multiple times without ID or state collisions.
+ * - Variant lookup uses a Map built once per product open (O(1) per selection).
+ * - Add to cart uses Shopify's AJAX Cart API (/cart/add.js) and refreshes the
+ *   header cart icon through the Section Rendering API (no page reload).
+ * - Promotion: Black + Medium variants auto-add the "Dark Winter Jacket".
+ */
   const sectionRoot = document.getElementById('product-grid-{{ section.id }}');
   if (!sectionRoot) return;
 
- // Cache DOM elements for popup
+  // Cache static popup DOM nodes - prevents repeated querySelector on each open
   const overlay = document.getElementById('PopupOverlay-{{ section.id }}');
   const popupImage = document.getElementById('PopupImage-{{ section.id }}');
   const popupTitle = document.getElementById('PopupTitle-{{ section.id }}');
@@ -123,76 +196,206 @@
   const popupMessage = document.getElementById('PopupMessage-{{ section.id }}');
   const closeBtn = sectionRoot.querySelector('.popup-close');
 
-   let selectedOptions = []; // Stores current selection [Color, Size]
-  let softJacket = null; // Cache for dark-winter-jacket product for auto-add
-  let matchedVariant = null; // Currently matched variant based on selection
+  // ---- State ----
+let selectedOptions = [];    // Option values in product order, e.g. ['Black', 'Medium']
+let softJacket = null;       // Cross-sell product, parsed from #SoftJacketJson
+let matchedVariant = null;   // Variant matching the current selection (null until complete)
+let currentProductData = null; // Data of the product shown in the popup
+let lockClose = false;       // True while an add-to-cart request is in flight
+  /**
+    * Converts any CSS color name to HEX for reliable rendering
+    * Handles edge cases like "Light Blue" -> "#add8e6"
+    * Returns fallback #ccc if color name is invalid/custom like "Heather Grey"
+  **/
+  // Cache canvas context for performance - reuse instead of creating on every color
+  const ctx = document.createElement('canvas').getContext('2d');
+  function colorNameToHex(colorName) {
+  // 1. Create offscreen canvas to let browser parse the color
+  ctx.fillStyle = colorName.toLowerCase();
+  // If browser couldn't parse it, fillStyle stays #000000 or original
+  // We check with CSS.supports to be sure
+  if (!CSS.supports('color', colorName)) {
+    // Try with spaces removed - "Light Blue" -> "lightblue"
+    const noSpace = colorName.toLowerCase().replace(/\s+/g, '');
+    if (CSS.supports('color', noSpace)) {
+      ctx.fillStyle = noSpace;
+    } else {
+      return '#cccccc'; // Fallback for custom names like "Heather Grey"
+    }
+  }
+  
+  // ctx.fillStyle always returns normalized hex/rgb - e.g. "black" -> "#000000"
+  return ctx.fillStyle;
+}
 
-    // Preload the jacket product so it's ready if condition is met
-    fetch('/products/dark-winter-jacket.js')
-    .then(r=>r.json())
-    .then(d=>{ softJacket=d; console.log('Jacket loaded:', d.title); })
-    .catch(()=> console.error('Failed to load Dark Winter Jacket product'));
+  // Parse the cross-sell product once. A parse failure must not break the quick view,
+// so it only logs a warning and the promotion is skipped.
+  try {
+    const softJacketEl = document.getElementById('SoftJacketJson');
+    if (softJacketEl) {
+      softJacket = JSON.parse(softJacketEl.textContent);
+    }
+  }  catch(e) { console.warn('SoftJacket parse failed', e); }
 
-    // Attach click listener to each + button
-    sectionRoot.querySelectorAll('.circle-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const card = this.closest('.product-card');
-      const productData = JSON.parse(card.dataset.product);
-
-      // Fill popup with product data from data-attribute
-      popupTitle.textContent = productData.title;
-      popupPrice.textContent = productData.price_formatted;
-      popupImage.src = productData.image;
-      popupDesc.innerHTML = productData.description;
-
-      // Reset selection state and variant UI
-      selectedOptions = [];
-      variantsWrap.innerHTML = '';
-
-      // Loop through product options (e.g., Color, Size) and build buttons
-      productData.options.forEach((optName, optIndex) => {
-        const values = [...new Set(productData.variants.map(v => v['option'+(optIndex+1)]))];
-        // Create wrapper for each option type (Color / Size)
-        const div = document.createElement('div');
-        const span = document.createElement('span');
-        const options = document.createElement('div');
-        span.textContent = optName;
-        options.className = optName.toLowerCase();
-        div.appendChild(span);
-        div.appendChild(options);
-        const list = div.querySelector('div:last-child');
-         // Create button for each option value
-        values.forEach(val => {
-          const b = document.createElement('button');
-          b.type='button'; b.textContent=val;
-          // On select: highlight button, save selection, find matching variant
-          b.onclick = ()=>{
-            list.querySelectorAll('button').forEach(x=>{x.style.background='#fff'; x.style.color='#000';});
-            b.style.background='#000'; b.style.color='#fff';
-            selectedOptions[optIndex]=val;
-            // Find variant where all selected options match
-            const matched = productData.variants.find(v=> selectedOptions.every((ov,i)=>!ov || v['option'+(i+1)]===ov));
-            if(matched) {
-              variantInput.value = matched.id; // This id will be sent to cart
-              matchedVariant = matched; 
-            }
-          };
-          list.appendChild(b);
-        });
-        variantsWrap.appendChild(div);
-        div.querySelector('button')?.click(); // Auto-select first value
-      });
-
-       // Show popup and lock body scroll
-      overlay.classList.add('show');
-      document.body.style.overflow = 'hidden'; // Prevent background scroll
+  // Global handler to close custom selects when clicking outside
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.custom-select').forEach(s => {
+      if (!s.contains(e.target)) s.classList.remove('open');
     });
   });
 
-  // Close popup handler - restores body scroll
+  // Open popup on + button click
+  sectionRoot.querySelectorAll('.circle-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    const card = this.closest('.product-card');
+    const productId = card.dataset.productId;
+    const jsonEl = document.getElementById(`ProductJson-${productId}`);
+    if(!jsonEl) return;
+    
+    const productData = JSON.parse(jsonEl.textContent);
+    currentProductData = productData;
+    /**
+     * PERFORMANCE OPTIMIZATION:
+     * Build variant Map once per product open: O(V * O) where V=variants, O=options
+     * Lookup later is O(1) instead of O(V * O) with find+every on every click
+     * Key format: "Color|Size" e.g. "Black|Medium" - order matches selectedOptions
+     **/
+    productData.variantMap = new Map();
+      productData.variants.forEach(vr => {
+        const key = [vr.option1, vr.option2, vr.option3].filter(Boolean).join('|');
+        productData.variantMap.set(key, vr);
+      });
+    
+    // Populate popup header
+    popupTitle.textContent = productData.title;
+    popupPrice.textContent = productData.price_formatted;
+    popupImage.src = productData.image;
+    popupDesc.innerHTML = productData.description;
+    // Reset state for new product
+    selectedOptions = new Array(productData.options.length).fill('');
+    variantsWrap.innerHTML = '';
+    matchedVariant = null;
+
+    // Render dynamic option selectors based on product.options
+    productData.options.forEach((opt) => {
+      const option = document.createElement("div");
+      const name = document.createElement('span');
+      name.textContent = opt.name;
+      option.appendChild(name);
+
+    if (opt.name.toLowerCase() === "color") {
+      // Color UI: Button group with active indicator sliding animation
+      const containerValues = document.createElement("div");
+      const activeElement = document.createElement("span")
+      containerValues.className = "color";
+      activeElement.className = "active-element"
+      containerValues.appendChild(activeElement)
+      option.appendChild(containerValues);
+      variantsWrap.appendChild(option);
+
+      opt.values.forEach((v) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = v;
+      containerValues.appendChild(b);
+      b.style.borderLeft = `5px solid ${colorNameToHex(v)}`; // Convert color name to HEX for consistent border color
+      b.onclick = () => {
+        containerValues.querySelectorAll('button').forEach(x => x.classList.remove("active"));
+        b.classList.add("active");
+        activeElement.style.left = b.offsetLeft + 'px';
+        activeElement.style.width = b.offsetWidth + 'px';
+        activeElement.style.opacity = '1';
+        selectedOptions[opt.position - 1] = v;
+        updateMatchedVariant();
+      };
+    });
+    } else {
+      // Size / Other options UI: Custom select dropdown (Figma spec)
+      const wrapper = document.createElement("div");
+      wrapper.className = `custom-select ${opt.name.toLowerCase()}`;
+      const trigger = document.createElement("div");
+      trigger.className = "select-trigger";
+      const targetSize = document.createElement("span");
+      targetSize.textContent = `Choose your ${opt.name}`;
+      const iconArrow = document.createElement("span")
+      iconArrow.className = "icon-arrow"
+      iconArrow.innerHTML = `<svg width="15" height="9" viewBox="0 0 15 9" fill="none"><path d="M1.06055 1.06067L7.06055 7.06067L13.0605 1.06067" stroke="black" stroke-width="1.5" stroke-linecap="square"/></svg>`
+      trigger.append(targetSize, iconArrow)
+      const optionsList = document.createElement("div");
+      optionsList.className = "select-options";
+
+  opt.values.forEach((v) => {
+    const o = document.createElement('div');
+    o.className = 'select-option';
+    o.dataset.value = v;
+    o.textContent = v;
+
+    o.onclick = () => {
+      targetSize.textContent = v;
+      optionsList.querySelectorAll('.select-option').forEach(el => el.classList.remove('selected'));
+      o.classList.add('selected');
+      wrapper.classList.remove('open');
+      selectedOptions[opt.position - 1] = v;
+      updateMatchedVariant();
+    };
+    optionsList.appendChild(o);
+  });
+
+    trigger.onclick = () => wrapper.classList.toggle('open');
+      wrapper.append(trigger, optionsList);
+      option.appendChild(wrapper);
+      variantsWrap.appendChild(option);}
+});
+
+      /**
+      * Updates matched variant using HashMap O(1)
+      * Also handles UI states: disabled, out of stock, select options prompt
+      **/
+    function updateMatchedVariant() {
+      const addBtn = document.querySelector(`#PopupForm-{{ section.id }} button[type="submit"]`);
+      // Prevent add until all options selected
+      if (selectedOptions.some(v =>!v)) {
+        variantInput.value = '';
+        matchedVariant = null;
+        addBtn.disabled = true;
+        addBtn.textContent = 'Select options';
+        return;
+    }
+
+    const selectedKey = selectedOptions.filter(Boolean).join('|');
+    const matched = currentProductData.variantMap.get(selectedKey);
+
+    if(matched) {
+      variantInput.value = matched.id;
+      matchedVariant = matched;
+      addBtn.disabled =!matched.available;
+      addBtn.textContent = matched.available? 'Add to Cart' : 'Out of stock';
+    } else {
+  variantInput.value = '';
+  matchedVariant = null;
+  addBtn.disabled = true;
+  addBtn.textContent = 'Unavailable';
+}
+  }
+    updateMatchedVariant();
+    popupMessage.style.display = 'none';
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  });
+});
+
+
+  /**
+  * Closes the popup and restores page scroll.
+  * Ignored while lockClose is true, so the user cannot dismiss the popup (× button,
+  * overlay click, Escape) in the middle of an add-to-cart request. This keeps the
+  * success/error message and the button state tied to the product that was added.
+  */
   function closePopup() {
+    if (lockClose) return;
     overlay.classList.remove('show');
     document.body.style.overflow = 'auto';
+    popupMessage.style.display = 'none';
   }
   closeBtn.addEventListener('click', closePopup);
   // Close when clicking outside popup content
@@ -200,53 +403,98 @@
     // Close on ESC key
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && overlay.classList.contains('show')) closePopup(); });
 
-  // Handle add to cart + special condition Black + Medium
-  if(popupForm) {
-    popupForm.addEventListener('submit', function(e){
-      e.preventDefault();
-      const formData = new FormData(this);
+  /**
+  * Add to Cart handler
+  * 1. Lock the popup and disable the button (prevents double submit and early close).
+  * 2. Add the selected variant via /cart/add.js.
+  * 3. Promotion: if the variant is Black + Medium, also add the Dark Winter Jacket.
+  * 4. Refresh the header cart icon via the Section Rendering API (no reload).
+  * 5. Show feedback, then auto-close after 1s and release the lock.
+  * On failure the lock is released immediately so the user can retry or close.
+ */
+ if (popupForm) {
+  popupForm.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    // Guard against a second submit (e.g. pressing Enter in the quantity field)
+    if (lockClose) return;
+    const submitBtn = this.querySelector('[type="submit"]');
+    const originalText = submitBtn.textContent;
 
-      // Check variant title (e.g., "Black / Medium") - more reliable than option index
-      const title = (matchedVariant ? matchedVariant.title : '').toLowerCase();
+    try {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Adding...';
+      popupMessage.style.display = 'none';
+      lockClose = true;
+      overlay.querySelector('.popup-content').classList.add('locked');
+      const title = (matchedVariant?.title || '').toLowerCase();
       const hasBlack = title.includes('black');
       const hasMedium = title.includes('medium') || title.split('/').some(s => s.trim() === 'm');
 
-      // 1- Add main product
-      fetch('/cart/add.js', { method: 'POST', body: formData })
-        .then(res => res.json())
-        .then(data => {
-        // 2- If condition met: Black + Medium -> auto-add Dark Winter Jacket
-        if(hasBlack && hasMedium){
-          if(!softJacket) { alert('Failed to load Dark Winter Jacket product'); return; }
-          let jVar = softJacket.variants.find(v => {
-            const t = (v.title || '').toLowerCase(); 
-            const isBlack = t.includes('black');
-            const isMedium = t.includes('medium') || t.split('/').some(s => s.trim() === 'm');
-          return isBlack && isMedium;
-          }) || softJacket.variants[0]; // Fallback to first available variant
+      // 1) Add main product
+      const res = await fetch('/cart/add.js', { method: 'POST', body: new FormData(this) });
+      if (!res.ok) throw new Error((await res.json()).description || 'Failed to add');
 
-          return fetch('/cart/add.js', {
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({id: jVar.id, quantity: 1})
+      // 2) Promotion: auto-add jacket for Black + Medium
+      let jacketAdded = false;
+      if (hasBlack && hasMedium && softJacket) {
+        // Fallback: if no Black/Medium variant exists on the jacket, use its first variant
+        const jVar = softJacket.variants.find(v => {
+          const t = (v.title || '').toLowerCase();
+          return t.includes('black') && (t.includes('medium') || t.split('/').some(s => s.trim() === 'm'));
+        }) || softJacket.variants[0];
+
+        if (jVar) {
+          const jRes = await fetch('/cart/add.js', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: jVar.id, quantity: 1 })
           });
+          // Only report the jacket as added if its request actually succeeded
+          // (e.g. it may be out of stock even though the main product was added)
+          jacketAdded = jRes.ok;
         }
-      })
-      .then(()=>{
-        // Show success feedback
-        popupMessage.textContent = hasBlack && hasMedium? '✓ Added + Dark Winter Jacket auto-added!' : '✓ Added to cart!';
-        popupMessage.style.display = 'block';
-        popupMessage.style.color = 'green';
-        setTimeout(() => { popupMessage.style.display = 'none'; closePopup(); }, 1200);
-      })
-      .catch(err => {
-        console.error(err);
-        popupMessage.textContent = 'Error adding to cart';
-        popupMessage.style.display = 'block';
-        popupMessage.style.color = 'red';
-      });
-    });
-  }
+      }
+
+      // 3) Refresh the cart icon. Kept in its own try/catch: a failed icon refresh
+// must not show an error after the product was added successfully.
+      try {
+        const secs = await (await fetch(`${location.pathname}?sections=cart-icon-bubble`, { cache: 'no-store' })).json();
+        const temp = document.createElement('div');
+        temp.innerHTML = secs['cart-icon-bubble'] || '';
+        const newBubble = temp.querySelector('#cart-icon-bubble') || temp.querySelector('.shopify-section');
+        const oldBubble = document.getElementById('cart-icon-bubble');
+        if (newBubble && oldBubble) oldBubble.innerHTML = newBubble.innerHTML;
+      } catch (e) {
+        console.warn('Cart icon refresh failed', e);
+      }
+
+      popupMessage.textContent = jacketAdded ? '✓ Added + Dark Winter Jacket auto-added!' : '✓ Added to cart!';
+      popupMessage.style.display = 'block';
+      popupMessage.style.color = 'green';
+      submitBtn.textContent = '✓ Added';
+
+      setTimeout(
+        () => {
+          // Release the lock and close the popup
+          lockClose = false;
+          overlay.querySelector('.popup-content').classList.remove('locked');
+          closePopup();
+        }
+        , 1000);
+
+    } catch (err) {
+      console.error(err);
+      // Always release the lock on failure so the user is never stuck in the popup
+      lockClose = false;
+      popupMessage.textContent = err.message || 'Error adding to cart';
+      popupMessage.style.display = 'block';
+      popupMessage.style.color = 'red';
+      submitBtn.disabled = false;
+      overlay.querySelector('.popup-content').classList.remove('locked');
+      submitBtn.textContent = originalText;
+    }
+  });
+}
 })();
 </script>
 
@@ -268,6 +516,18 @@
     }
   ],
   "max_blocks": 6,
-  "presets": [{ "name": "Product Grid" }]
+  "presets": [
+    { 
+      "name": "Product Grid",
+      "blocks": [
+        { "type": "product" },
+        { "type": "product" },
+        { "type": "product" },
+        { "type": "product" },
+        { "type": "product" },
+        { "type": "product" }
+      ]
+    }
+  ]
 }
 {% endschema %}
