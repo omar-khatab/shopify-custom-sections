@@ -1,3 +1,6 @@
+
+https://github.com/user-attachments/assets/c9a241b3-7290-410c-aeac-599896c355f1
+
 # Shopify Custom Sections
 
 Custom sections built on top of the Shopify **Dawn** theme, using Liquid, vanilla JavaScript, and CSS.
