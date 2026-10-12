@@ -41,7 +41,7 @@ shopify theme dev --store your-store.myshopify.com
 ```
 sections/
   product-grid.liquid   # Product grid + quick view popup + add to cart
-  the-banner.liquid     # Full banner section
+  the-Banner.liquid     # Full banner section
 templates/              # Page templates that use the sections
 ```
 
