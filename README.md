@@ -1,5 +1,5 @@
 
-https://github.com/user-attachments/assets/e67db9e9-9cda-4423-b9b1-117bd1886594
+[live code shopify.webm](https://github.com/user-attachments/assets/ca547912-bab9-4693-8ade-397752129e0b)
 
 # Shopify Custom Sections
 
