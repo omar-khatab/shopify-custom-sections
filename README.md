@@ -1,5 +1,5 @@
 
-https://github.com/user-attachments/assets/8c55fcd7-ca3a-4ddc-9fcb-325281450207
+   [![Demo video](assets/thumbnail.png)](https://www.youtube.com/watch?v=VIDEO_ID)
 
 # Shopify Custom Sections
 
