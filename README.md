@@ -1,5 +1,5 @@
 
-https://github.com/user-attachments/assets/9bcf179e-1554-4b1f-98f6-5952d2e3f054
+https://github.com/user-attachments/assets/8c55fcd7-ca3a-4ddc-9fcb-325281450207
 
 # Shopify Custom Sections
 
