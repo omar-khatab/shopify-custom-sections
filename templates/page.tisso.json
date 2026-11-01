@@ -13,8 +13,8 @@
       "type": "the-Banner",
       "settings": {
         "small_text": "Find the ideal gift for your loved ones.",
-        "gift_link": "",
-        "gift_btn": "choose gift",
+        "header_link": "",
+        "header_btn": "choose gift",
         "main_heading": "The Gift Guide",
         "main_text_desktop": "Discover Joy: Your Ultimate Holiday Gift Destination. Explore our curated selection and find the perfect gifts to delight your loved ones this holiday season.",
         "main_text_mobile": "Discover Joy: Your Ultimate Holiday Gift Destination.",
@@ -36,31 +36,31 @@
         "product_2": {
           "type": "product",
           "settings": {
-            "product": ""
+            "product": "chequered-red-shirt"
           }
         },
         "product_3": {
           "type": "product",
           "settings": {
-            "product": ""
+            "product": "floral-white-top"
           }
         },
         "product_4": {
           "type": "product",
           "settings": {
-            "product": ""
+            "product": "blue-silk-tuxedo"
           }
         },
         "product_5": {
           "type": "product",
           "settings": {
-            "product": ""
+            "product": "classic-varsity-top"
           }
         },
         "product_6": {
           "type": "product",
           "settings": {
-            "product": ""
+            "product": "classic-leather-jacket"
           }
         }
       },
