@@ -1,4 +1,8 @@
 
+
+https://github.com/user-attachments/assets/e67db9e9-9cda-4423-b9b1-117bd1886594
+
+
    [![Demo video](assets/thumbnail.png)](https://www.youtube.com/watch?v=VIDEO_ID)
 
 # Shopify Custom Sections
